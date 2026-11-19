@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CounselorHub — Admission &amp; School Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* Базовые сбросы и строгие правила без свечения/размытия текста */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      text-shadow: none !important;
+      filter: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #0b1120;
+      color: #ffffff;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Прогресс-бар сверху */
+    .progress-track {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.14);
+      z-index: 50;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 12.5%;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Контейнер слайдов */
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      padding: 36px 52px 92px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow-y: auto;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(64px) scale(0.985);
+      transition:
+        opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+        visibility 0.7s;
+      /* Запасной светлый школьный фон на случай недоступности фото */
+      background-color: #f8fafc;
+      z-index: 1;
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0) scale(1);
+      z-index: 3;
+    }
+
+    .slide.prev {
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(-64px) scale(0.985);
+      z-index: 2;
+    }
+
+    /* Полноэкранная фотография с эффектом Ken Burns */
+    .slide-bg-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .slide-bg-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      transform: scale(1.02);
+      transition: transform 8.5s ease-out;
+    }
+
+    .slide.active .slide-bg-photo {
+      transform: scale(1.09);
+    }
+
+    /* Контрастный градиентный слой поверх фото для читаемости белого текста без свечения */
+    .slide-scrim {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: linear-gradient(
+        180deg,
+        rgba(9, 15, 30, 0.68) 0%,
+        rgba(9, 15, 30, 0.58) 50%,
+        rgba(9, 15, 30, 0.76) 100%
+      );
+    }
+
+    /* Внутренний контейнер контента */
+    .slide-content {
+      position: relative;
+      z-index: 4;
+      max-width: 1160px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Анимация появления элементов слайда */
+    .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition:
+        opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+        transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .slide.active .reveal {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .slide.active .d-1 { transition-delay: 0.06s; }
+    .slide.active .d-2 { transition-delay: 0.14s; }
+    .slide.active .d-3 { transition-delay: 0.22s; }
+    .slide.active .d-4 { transition-delay: 0.30s; }
+    .slide.active .d-5 { transition-delay: 0.38s; }
+
+    /* Чёткая типографика без свечения и тени */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.36);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .hero-heading {
+      margin: 14px 0 14px 0;
+      font-size: clamp(32px, 4.4vw, 52px);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .slide-heading {
+      margin: 12px 0 16px 0;
+      font-size: clamp(24px, 3vw, 36px);
+      font-weight: 800;
+      line-height: 1.18;
+      letter-spacing: -0.015em;
+      color: #ffffff;
+    }
+
+    .lead-copy {
+      margin: 0 0 22px 0;
+      max-width: 880px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      background: rgba(9, 15, 30, 0.24);
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      color: #f1f5f9;
+      font-size: clamp(15px, 1.4vw, 18px);
+      line-height: 1.52;
+      font-weight: 400;
+    }
+
+    .lead-copy strong,
+    .panel p strong,
+    .panel li strong,
+    .sp-table td strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .hl-indigo { color: #a5b4fc; }
+    .hl-emerald { color: #6ee7b7; }
+    .hl-amber { color: #fcd34d; }
+
+    /* Сетки */
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+
+    /* Прозрачные панели и карточки */
+    .panel {
+      background: rgba(9, 15, 30, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 16px;
+      padding: 20px;
+      transition: transform 0.28s ease, border-color 0.28s ease, background-color 0.28s ease;
+    }
+
+    .panel:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.55);
+      background: rgba(9, 15, 30, 0.34);
+    }
+
+    .accent-indigo { border-left: 4px solid #818cf8; }
+    .accent-emerald { border-left: 4px solid #34d399; }
+    .accent-amber { border-left: 4px solid #fbbf24; }
+    .accent-rose { border-left: 4px solid #fb7185; }
+
+    .panel-title {
+      margin: 0 0 8px 0;
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: #ffffff;
+    }
+
+    .panel p,
+    .panel li {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #f1f5f9;
+      font-weight: 400;
+    }
+
+    .panel ul {
+      margin: 6px 0 0 0;
+      padding-left: 18px;
+    }
+
+    .panel li + li {
+      margin-top: 6px;
+    }
+
+    .step-chip {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.32);
+      color: #ffffff;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .stat-num {
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1.1;
+      color: #ffffff;
+    }
+
+    .stat-desc {
+      margin-top: 6px;
+      font-size: 13.5px;
+      line-height: 1.42;
+      color: #f1f5f9;
+    }
+
+    /* Прозрачная таблица School Profile */
+    .table-wrap {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(9, 15, 30, 0.24);
+    }
+
+    .sp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      text-align: left;
+    }
+
+    .sp-table th {
+      padding: 12px 16px;
+      background: rgba(9, 15, 30, 0.45);
+      color: #ffffff;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+    }
+
+    .sp-table td {
+      padding: 11px 16px;
+      color: #f1f5f9;
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+      line-height: 1.45;
+      vertical-align: top;
+    }
+
+    /* Прозрачная нижняя панель управления */
+    .nav-bar {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(9, 15, 30, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .nav-btn {
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: transparent;
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.65);
+    }
+
+    .nav-btn:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .nav-btn.active-auto {
+      border-color: #34d399;
+      color: #6ee7b7;
+    }
+
+    .dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 4px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      padding: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      background: transparent;
+      cursor: pointer;
+      transition: width 0.25s ease, background-color 0.25s ease, border-color 0.25s ease;
+    }
+
+    .dot.active {
+      width: 22px;
+      background: #34d399;
+      border-color: #34d399;
+    }
+
+    .slide-counter {
+      min-width: 46px;
+      text-align: center;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    @media (max-width: 960px) {
+      .slide {
+        padding: 24px 18px 92px 18px;
+        justify-content: flex-start;
+      }
+      .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+      }
+      .dots {
+        display: none;
+      }
+      .nav-bar {
+        max-width: calc(100vw - 24px);
+        gap: 6px;
+        padding: 7px 10px;
+      }
+      .nav-btn {
+        padding: 6px 10px;
+        font-size: 11.5px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress-track" aria-hidden="true">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+
+  <main class="deck" id="deck">
+    <!-- Слайд 1: Титульный -->
+    <section class="slide active" data-index="0">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNeBVixub6nB5iGy3MgyXgxwVA10FIAgN9XCdPl5uFRA3IFtzpJG23DtoEJNZQlMhiYzVh9JNI_2-xxHWNg9Uy8QLaQiLJrlvLQi-kZpJo3dmca-nOX9tjfIrX9Zv4OCQ1YYbgsHsONLqUIB52d5UBi-aWUhEg7chwxNGqrRNmLnnyIYa-cBPaSbLzeec9fZxaujvVZtrCZewmt2d2v2Bj8fksrksGyu1Qn5TSafjFX711tkeDRTx2Q669D1ncibaYw8F4eGPIVtsEGHT2tAJiSZOcLf6QWhUGIU9LKe9A5TiCMa9v2Mh7CBqIFvsN8NSbmd9P1u-HXq098EBZH7NN4T=s0"
+          data-fallback="7f8eb5d2.jpeg"
+          alt="Современный школьный кампус"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">CounselorHub • 9–11 классы</span>
+        <h1 class="hero-heading reveal d-2">
+          CounselorHub<br />
+          <span class="hl-indigo">Admission &amp; School Profile</span>
+        </h1>
+        <p class="lead-copy reveal d-3">
+          Платформа для <strong>школьного советника (Maktab maslahatchisi)</strong> и <strong>старшеклассников (9–11 классы)</strong>:
+          профориентация <strong>RIASEC</strong>, трекер <strong>IELTS / SAT</strong>, список вузов <strong>Reach / Match / Safety</strong>,
+          портфолио и документы для поступления, а также генератор <strong>School Profile</strong> по 4 разделам.
+        </p>
+        <div class="grid-3 reveal d-4">
+          <div class="panel accent-indigo">
+            <div class="stat-num">9–11 кл.</div>
+            <div class="stat-desc">Индивидуальная диагностика RIASEC, баллы IELTS/SAT и выбор вузов</div>
+          </div>
+          <div class="panel accent-emerald">
+            <div class="stat-num hl-emerald">4 раздела</div>
+            <div class="stat-desc">Структурированный School Profile для приёмных комиссий</div>
+          </div>
+          <div class="panel accent-amber">
+            <div class="stat-num hl-amber">2 роли</div>
+            <div class="stat-desc">Совместная работа школьного советника и ученика в одном месте</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 2: Проблема в школе -->
+    <section class="slide" data-index="1">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNfDPgo7SUt24SOh5F_9rckiqsotjYvVn6VDCB5HvhdTgPiCA2D1iR-ejq0fyKyMt68iUfycqeJKhtNhdtbahqRp_9NdAHOpfrN-WNbbncEI6CFREcShG3R5QLNxIxy3K1-TYzQV_8pIBFUxV9lhZ17sPMTC6ICxLX1xdNUqR3FmapALLEC6EDe5-htUdrUO42lAe8k-6MVcsfYKrryDgmlge9W2XAzqYzSj8rGERrhFXz2zHNDUg26d4wBy3t6PuNObWWBIfjeFkrkNhzR8Wua-bBsZmWUUDe7W9gezbQt6O3XbtInth5ldk5enu1TqlhMEoOU8DkwBRR_u_PPowMio=s0"
+          data-fallback="f88f799d.jpeg"
+          alt="Школьный класс с партами и доской"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">01 • Проблема</span>
+        <h2 class="slide-heading reveal d-2">Данные по поступлению разбросаны по таблицам и чатам</h2>
+        <div class="grid-2">
+          <div class="panel accent-rose reveal d-2">
+            <h3 class="panel-title">Разрозненный учёт результатов</h3>
+            <p>
+              Итоги <strong>IELTS / SAT</strong>, результаты теста <strong>RIASEC</strong>, списки университетов и достижения учеников
+              ведутся в разных файлах — советнику сложно быстро оценить готовность класса.
+            </p>
+          </div>
+          <div class="panel accent-amber reveal d-3">
+            <h3 class="panel-title">Ручная сборка School Profile</h3>
+            <p>
+              Подготовка документа <strong>School Profile</strong> по учебному плану, оцениванию, поступлению и школьному
+              сообществу занимает много ручного времени при каждой подаче заявок.
+            </p>
+          </div>
+          <div class="panel accent-amber reveal d-4">
+            <h3 class="panel-title">Сложный баланс списка вузов</h3>
+            <p>
+              Ученикам непросто грамотно распределить университеты на <strong>Reach</strong>, <strong>Match</strong> и <strong>Safety</strong>
+              с учётом проходных баллов и сроков подачи.
+            </p>
+          </div>
+          <div class="panel accent-rose reveal d-5">
+            <h3 class="panel-title">Потеря комментариев по документам</h3>
+            <p>
+              Правки по резюме, мотивационным письмам и портфолио теряются в переписках, задерживая финальный пакет документов.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 3: Единый маршрут решения -->
+    <section class="slide" data-index="2">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNeLLZ_qt8JFKnUZMq3-uySgHYTLbszyO0FHQ151ZgA0DEsQr7wAM1RqVKfS8dQ4rL8aHtRZnWCKCYvfhvl0sXBTPt8ZehIaeudIRKn3alJLlq3Hk6TuJgXkIeFEX8VBU2zDL0bDljwdsEygYmYKvYvDioKZtWILBn6JPBOxUEtdmUez8uVIfvwcBdRGqfN65BE92bxffFd0BPDlCcW-MYA5S0NfCXO5ZtH9e0LEZaljZSnOuML14OktyCk4hQJMjMRLFxW39iBua_2pnXtrnoglEcWBDAFvE4CBQyZlwq8NAQcS5fnULA9-Tc3_UFMbJhAz65oPCz8Uxehl6FWdSgIf=s0"
+          data-fallback="f4643d3b.jpeg"
+          alt="Консультация школьного советника с учеником"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">02 • Решение</span>
+        <h2 class="slide-heading reveal d-2">Чёткий процесс подготовки к поступлению в одном интерфейсе</h2>
+        <p class="lead-copy reveal d-2">
+          <strong>CounselorHub</strong> связывает работу <strong>школьного советника</strong> и <strong>ученика 9–11 классов</strong>
+          от диагностики до формирования полного пакета для вузов.
+        </p>
+        <div class="grid-4">
+          <div class="panel accent-indigo reveal d-2">
+            <span class="step-chip">Этап 1</span>
+            <h3 class="panel-title">RIASEC и экзамены</h3>
+            <p>Определение профиля по <strong>RIASEC</strong> и отслеживание динамики баллов <strong>IELTS / SAT</strong>.</p>
+          </div>
+          <div class="panel accent-emerald reveal d-3">
+            <span class="step-chip">Этап 2</span>
+            <h3 class="panel-title">College List</h3>
+            <p>Списки вузов по уровням <strong>Reach / Match / Safety</strong> с датами дедлайнов и статусами.</p>
+          </div>
+          <div class="panel accent-amber reveal d-4">
+            <span class="step-chip">Этап 3</span>
+            <h3 class="panel-title">Портфолио и файлы</h3>
+            <p>Учёт достижений, черновиков документов и комментариев школьного советника.</p>
+          </div>
+          <div class="panel accent-indigo reveal d-5">
+            <span class="step-chip">Этап 4</span>
+            <h3 class="panel-title">School Profile</h3>
+            <p>Формирование официального профиля школы по 4 обязательным разделам.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 4: Профиль ученика и диагностика -->
+    <section class="slide" data-index="3">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNeDBRXBF9_dKSjlmWcHfEY1sRoENsj-ot2vUGb_Pfn2RmqEEYRIwkbQmDTUemnAvNsFHpm0r-ADmYuiY0xXszAKRkiUx1omFjbOkg_1deKemA_hfaESNQjNHdUmLRBkKYwUWTEHKvjo_yZJ_JD_NWaGbmShA57TT4TJvS7k1JOv1jfJFoXnQ_FBgk-Chz1k15BTL7i4khe0DluXRI8ouq_bgaf8PTHD6Y9fCW-3dCHMkSyKkezib1qlSjlMxoDxxKMeILAHeNnRyJqeqyvm9ra_1Z5iKugEm0rZ-guFrokxO2UjyZspZhkQS4NKD5C7vM0jNVK50O8iQHu_U7imthGV=s0"
+          data-fallback="35004884.jpeg"
+          alt="Старшеклассники с ноутбуками в библиотеке"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">03 • Карточка ученика</span>
+        <h2 class="slide-heading reveal d-2">Профориентация RIASEC и трекер IELTS / SAT</h2>
+        <div class="grid-2">
+          <div class="panel accent-indigo reveal d-3">
+            <h3 class="panel-title">Профориентация RIASEC (9–11 классы)</h3>
+            <ul>
+              <li>Помогает соотнести интересы ученика с подходящими направлениями и вузами.</li>
+              <li>Позволяет скорректировать выбор профильных предметов и внеучебных проектов.</li>
+              <li>Хранит результат в карточке ученика для консультаций с советником.</li>
+            </ul>
+          </div>
+          <div class="panel accent-emerald reveal d-4">
+            <h3 class="panel-title">Трекер IELTS и SAT</h3>
+            <ul>
+              <li>Фиксирует стартовые, промежуточные и целевые баллы по <strong>IELTS</strong> и <strong>SAT</strong>.</li>
+              <li>Показывает прогресс ученика в динамике перед подачей заявок.</li>
+              <li>Помогает объективно подбирать вузы под текущий уровень подготовки.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 5: Список вузов и пакет документов -->
+    <section class="slide" data-index="4">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNdO4fm46eAZJrCdLe3bmDuKbGEnj-hLtaXka9Mn2HpSvGdpP6KqJwEDpZ3ylKf1v6w_6G6QjCGpUuz6m3siTlYgXCHMP9y-0XBsjxhXNROvfNDPUYAMZXNx-S6v_WDbOi9493j52aIkUGREBVKHAUusczs9rWI15RE_qlsydteCya4ih6UUlshltBOF32aaO-E1Rf27EgCvRrgRpH3EOVLCj2u6XvyYuq-4vMw7gnuzyC4EcwE1JvQEt8ifB4QiWU-l83jUe0DOC_3IIBM7rxjUQq0hTEsDeEBScunkld3nl6t1zFjB_VSQum2-GoVjgRQCXOFGehvHYeYFbegy3_7u=s0"
+          data-fallback="0dc26be7.jpeg"
+          alt="Академический транскрипт и диплом"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">04 • Подача заявок</span>
+        <h2 class="slide-heading reveal d-2">College List (Reach / Match / Safety) и портфолио документов</h2>
+        <div class="grid-2">
+          <div class="panel accent-amber reveal d-3">
+            <h3 class="panel-title">Структура списка вузов</h3>
+            <ul>
+              <li><strong>Reach</strong> — амбициозные университеты с высокой конкуренцией.</li>
+              <li><strong>Match</strong> — программы, соответствующие текущим баллам и профилю.</li>
+              <li><strong>Safety</strong> — надёжные варианты для гарантированного зачисления.</li>
+            </ul>
+          </div>
+          <div class="panel accent-indigo reveal d-4">
+            <h3 class="panel-title">Портфолио и проверка документов</h3>
+            <ul>
+              <li>Сбор сертификатов, олимпиадных успехов и проектной активности.</li>
+              <li>Отслеживание готовности резюме, мотивационных писем и рекомендаций.</li>
+              <li>Прямые правки и комментарии советника по каждому документу.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 6: Конструктор School Profile (4 раздела) -->
+    <section class="slide" data-index="5">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNedebA2YwKieyzYuBib_iMt1q679QLyN3iq96YURqbIHYk98dV1GBcZCP7uc9878G35jcn1RaVEdq8KaQso6e4nd8OKHgWGI48IJxcLnLN92mNMo8M8vn6B-9dutNXb63DQmS5uWv0EcjgF828EyF0SsJbRvmyH9ZgnPPgYjXFwJkvAhLyNcexID0TbQ3Q_9QQpUGzoE7xvl4ZKFU3XVr26hBx-5xufWg0Bsp-3MJ-Xs2nX3ne1uEecLGLTxZuHTubVzbx6Kr5b4xPIe49tEI4Oa2kNZ6aDycv5Ill1S48fUlbrKCNri4ThLr2IxkEFmAqo80wqs_wO7q17OnLD58E=s0"
+          data-fallback="b2fb60b2.jpeg"
+          alt="Учебники, компас и глобус на парте"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">05 • School Profile</span>
+        <h2 class="slide-heading reveal d-2">4 обязательных раздела профиля школы для университетов</h2>
+        <div class="table-wrap reveal d-3">
+          <table class="sp-table">
+            <thead>
+              <tr>
+                <th style="width: 28%;">Раздел</th>
+                <th style="width: 72%;">Содержание раздела School Profile</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>1. Academic curriculum</strong></td>
+                <td>Перечень преподаваемых предметов, требования к выпуску, описание учебной программы и внутренние правила школы.</td>
+              </tr>
+              <tr>
+                <td><strong>2. Grading systems</strong></td>
+                <td>Политика выставления оценок, рейтинг класса (class rank) и распределение среднего балла (GPA distribution).</td>
+              </tr>
+              <tr>
+                <td><strong>3. Postsecondary opportunities</strong></td>
+                <td>Процент поступления выпускников в вузы, список университетов и результаты тестов (SAT, IELTS, национальные тесты).</td>
+              </tr>
+              <tr>
+                <td><strong>4. School community</strong></td>
+                <td>Общая информация о школе и районе/махалле, демография учеников и общий контингент обучающихся.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 7: Этапы внедрения -->
+    <section class="slide" data-index="6">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNcY489ojaO0qX4JzsDpnNPANoSrraoksJptOkJgzQJf8ZIzGvxk3I6afUNlb6YSThAkdLewV4ua_D5Jqe_mZZMk7hpSMT92QimMMbuhs_yin_UiEXYm3aJoQe5qlT3oKXzfmW1W9zT_aozRfjD0FQsPHLBN3VxesKCRh2NfVXHYvvYD50Mqb6XnCaAaYrWJAeOeuQY9Vb2mR3AnHPTN9oGyxPY8Yv25C_tA6rR-iJl7rQe6ui45zNT7T5QTYfpCd3FBggMxNHrehR9CPiem6PvQdklQhThU8my1GzJF159zTFAP_Kll-0UDlycBvXZO8uXpaQNBPxdaKj1rwyuYGBEZ=s0"
+          data-fallback="5a54d110.jpeg"
+          alt="Университетский кампус и студенты"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">06 • Развитие</span>
+        <h2 class="slide-heading reveal d-2">От школьного MVP к масштабируемому решению</h2>
+        <div class="grid-3">
+          <div class="panel accent-emerald reveal d-2">
+            <span class="step-chip">Шаг 1 • MVP</span>
+            <h3 class="panel-title">Базовый контур 9–11 классов</h3>
+            <p>Профили учеников, RIASEC, IELTS/SAT, списки вузов, портфолио и конструктор School Profile по 4 разделам.</p>
+          </div>
+          <div class="panel accent-indigo reveal d-3">
+            <span class="step-chip">Шаг 2 • Аналитика</span>
+            <h3 class="panel-title">Сводки и контроль сроков</h3>
+            <p>Наглядная статистика готовности параллелей, дедлайны подачи и удобная выгрузка готовых данных.</p>
+          </div>
+          <div class="panel accent-amber reveal d-4">
+            <span class="step-chip">Шаг 3 • Масштаб</span>
+            <h3 class="panel-title">Подключение новых школ</h3>
+            <p>Тиражирование единого стандарта ведения старшеклассников и School Profile для разных школ.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Слайд 8: Итог -->
+    <section class="slide" data-index="7">
+      <div class="slide-bg-layer" aria-hidden="true">
+        <img
+          class="slide-bg-photo"
+          src="https://lh3.googleusercontent.com/gg/AJWXcNdFHyxqJsdD-pdzV8H__1otCIhUicDVAI8vMHGvroEdyVuOim1lOO7Fx7K5Q0IAwT9zmRV9oJnatAqw1dDA7M2vxtK2nBSarYWkN0tP7sPb_rDYg-sRcdOnN5BHcwNY5IjC-SaBBL_CDa5jJwE0s0Dgcbx9YgmC18yJgl38a97K_i9nJdEPH13Sbac9E_wHABpPXFcqeL6kcnhs0Nx0k-alEn0iqVj5bMhd4qw_7AonC-wpFvHrpLr9aQGwAV2rUfiiNyJtN0KEZ2ssPZx02Jvtg3D5SV0b44eIwA__hPSlqDZD4FMKSfahOAI2d6HyFAwgNmdiaj7Lyr6CfUi3CElN=s0"
+          data-fallback="c2f82559.jpeg"
+          alt="Выпускники подбрасывают академические шапочки"
+        />
+      </div>
+      <div class="slide-scrim" aria-hidden="true"></div>
+      <div class="slide-content">
+        <span class="badge reveal d-1">07 • Итог</span>
+        <h2 class="hero-heading reveal d-2">
+          CounselorHub — порядок в подготовке к поступлению <span class="hl-emerald">каждого ученика</span>
+        </h1>
+        <div class="grid-2 reveal d-3">
+          <div class="panel accent-indigo">
+            <h3 class="panel-title">Для школьного советника</h3>
+            <p>
+              Единая картина по ученикам 9–11 классов, контроль документов и быстрая сборка официального
+              <strong>School Profile</strong> без ручного копирования данных.
+            </p>
+          </div>
+          <div class="panel accent-emerald">
+            <h3 class="panel-title">Для старшеклассника</h3>
+            <p>
+              Понятный путь от диагностики <strong>RIASEC</strong> и прогресса по <strong>IELTS / SAT</strong> до сбалансированного
+              списка вузов и готового портфолио.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Панель навигации -->
+  <nav class="nav-bar" aria-label="Навигация по презентации">
+    <button type="button" class="nav-btn" id="prevBtn">← Назад</button>
+    <div class="dots" id="dots" role="tablist" aria-label="Выбор слайда"></div>
+    <span class="slide-counter" id="counter">1 / 8</span>
+    <button type="button" class="nav-btn" id="nextBtn">Вперёд →</button>
+    <button type="button" class="nav-btn" id="autoBtn" title="Автопоказ слайдов">▶ Авто</button>
+    <button type="button" class="nav-btn" id="fsBtn" title="Полноэкранный режим">⛶</button>
+  </nav>
+
+  <script>
+    (function () {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const autoBtn = document.getElementById('autoBtn');
+      const fsBtn = document.getElementById('fsBtn');
+      const dotsContainer = document.getElementById('dots');
+      const counterEl = document.getElementById('counter');
+      const progressFill = document.getElementById('progressFill');
+
+      let currentIndex = 0;
+      let autoTimer = null;
+
+      // Создаём точки-индикаторы для всех слайдов
+      slides.forEach((_, idx) => {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'dot' + (idx === 0 ? ' active' : '');
+        dot.setAttribute('aria-label', 'Перейти к слайду ' + (idx + 1));
+        dot.addEventListener('click', () => {
+          stopAutoplay();
+          goToSlide(idx);
+        });
+        dotsContainer.appendChild(dot);
+      });
+
+      const dotButtons = Array.from(dotsContainer.querySelectorAll('.dot'));
+
+      function goToSlide(index) {
+        const clamped = Math.max(0, Math.min(slides.length - 1, index));
+        currentIndex = clamped;
+
+        slides.forEach((slide, idx) => {
+          slide.classList.remove('active', 'prev');
+          if (idx === currentIndex) {
+            slide.classList.add('active');
+          } else if (idx < currentIndex) {
+            slide.classList.add('prev');
+          }
+        });
+
+        dotButtons.forEach((dot, idx) => {
+          dot.classList.toggle('active', idx === currentIndex);
+        });
+
+        counterEl.textContent = (currentIndex + 1) + ' / ' + slides.length;
+        progressFill.style.width = (((currentIndex + 1) / slides.length) * 100) + '%';
+
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === slides.length - 1;
+      }
+
+      function stopAutoplay() {
+        if (autoTimer !== null) {
+          clearInterval(autoTimer);
+          autoTimer = null;
+          autoBtn.classList.remove('active-auto');
+          autoBtn.textContent = '▶ Авто';
+        }
+      }
+
+      function toggleAutoplay() {
+        if (autoTimer !== null) {
+          stopAutoplay();
+        } else {
+          autoBtn.classList.add('active-auto');
+          autoBtn.textContent = '⏸ Пауза';
+          autoTimer = setInterval(() => {
+            const nextIdx = currentIndex + 1 < slides.length ? currentIndex + 1 : 0;
+            goToSlide(nextIdx);
+          }, 5500);
+        }
+      }
+
+      prevBtn.addEventListener('click', () => {
+        stopAutoplay();
+        goToSlide(currentIndex - 1);
+      });
+
+      nextBtn.addEventListener('click', () => {
+        stopAutoplay();
+        goToSlide(currentIndex + 1);
+      });
+
+      autoBtn.addEventListener('click', toggleAutoplay);
+
+      fsBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+          event.preventDefault();
+          stopAutoplay();
+          goToSlide(currentIndex + 1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+          event.preventDefault();
+          stopAutoplay();
+          goToSlide(currentIndex - 1);
+        }
+      });
+
+      // Поддержка свайпов на сенсорных экранах
+      let touchStartX = 0;
+      let touchStartY = 0;
+
+      document.addEventListener('touchstart', (event) => {
+        if (event.changedTouches && event.changedTouches.length > 0) {
+          touchStartX = event.changedTouches[0].screenX;
+          touchStartY = event.changedTouches[0].screenY;
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchend', (event) => {
+        if (event.changedTouches && event.changedTouches.length > 0) {
+          const dx = touchStartX - event.changedTouches[0].screenX;
+          const dy = touchStartY - event.changedTouches[0].screenY;
+          if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) {
+            stopAutoplay();
+            goToSlide(dx > 0 ? currentIndex + 1 : currentIndex - 1);
+          }
+        }
+      }, { passive: true });
+
+      // Поддержка локальных резервных файлов (7f8eb5d2.jpeg и т.д.) при ошибке загрузки удалённого URL
+      document.querySelectorAll('.slide-bg-photo').forEach((img) => {
+        img.addEventListener('error', () => {
+          const fallback = img.getAttribute('data-fallback');
+          if (fallback && img.getAttribute('src') !== fallback) {
+            img.setAttribute('src', fallback);
+          }
+        });
+      });
+
+      goToSlide(0);
+    })();
+  </script>
+</body>
+</html>
